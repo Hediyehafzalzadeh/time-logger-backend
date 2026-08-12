@@ -2,7 +2,7 @@ import Task from "../models/Task.js";
 
 export const createTask = async (req, res) => {
   try {
-    const task = await Task.create(req.body);
+    const task = await Task.create({ ...req.body, userId: req.user.id });
 
     res.status(201).json(task);
   } catch (error) {
@@ -12,7 +12,26 @@ export const createTask = async (req, res) => {
 
 export const getTasks = async (req, res) => {
   try {
-    const tasks = await Task.find();
+
+    const { startDate, endDate } = req.query;
+
+    const filter = {      
+      userId: req.user.id
+};
+
+    if (startDate || endDate) {
+      filter.date = {};
+
+      if (startDate) {
+        filter.date.$gte = new Date(startDate);
+      }
+
+      if (endDate) {
+        filter.date.$lte = new Date(endDate);
+      }
+    }
+
+    const tasks = await Task.find(filter);
 
     res.status(200).json(tasks);
   } catch (error) {
@@ -22,7 +41,7 @@ export const getTasks = async (req, res) => {
 
 export const getTask = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findOne({ _id: req.params.id, userId: req.user.id });
 
     if (!task) {
       return res.status(404).json({
@@ -38,8 +57,8 @@ export const getTask = async (req, res) => {
 
 export const updateTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
       req.body,
       { new: true }
     );
@@ -58,7 +77,7 @@ export const updateTask = async (req, res) => {
 
 export const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
 
     if (!task) {
       return res.status(404).json({
