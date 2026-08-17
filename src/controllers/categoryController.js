@@ -1,12 +1,26 @@
 import Category from "../models/Category.js";
 
 export const createCategory = async (req, res) => {
-  try {
-    const category = await Category.create(req.body);
 
-    res.status(201).json(category);
+  console.log("🔥 CREATE CATEGORY START");
+  console.log("BODY:", req.body);
+  console.log("USER:", req.user);
+  
+    try {
+    const category = await Category.create({
+      name: req.body.name,
+      color: req.body.color,
+      userId: req.user.userId,
+    });
+    console.log("🔥 CATEGORY CREATED → 201");
+
+
+    return res.status(201).json(category);
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
@@ -20,21 +34,6 @@ export const getCategories = async (req, res) => {
   }
 };
 
-export const getCategory = async (req, res) => {
-  try {
-    const category = await Category.findById(req.params.id);
-
-    if (!category) {
-      return res.status(404).json({
-        message: "Category not found",
-      });
-    }
-
-    res.status(200).json(category);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 export const updateCategory = async (req, res) => {
   try {

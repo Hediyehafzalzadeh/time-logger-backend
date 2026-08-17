@@ -13,21 +13,21 @@ export const createTask = async (req, res) => {
 export const getTasks = async (req, res) => {
   try {
 
-    const { startDate, endDate } = req.query;
+    const { start, end } = req.query;
 
     const filter = {      
       userId: req.user.id
 };
 
-    if (startDate || endDate) {
+    if (start || end) {
       filter.date = {};
 
-      if (startDate) {
-        filter.date.$gte = new Date(startDate);
+      if (start) {
+        filter.date.$gte = new Date(start);
       }
 
-      if (endDate) {
-        filter.date.$lte = new Date(endDate);
+      if (end) {
+        filter.date.$lte = new Date(end);
       }
     }
 

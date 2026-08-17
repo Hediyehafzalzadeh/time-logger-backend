@@ -76,11 +76,10 @@ export const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
-    res.cookie("token", token, {
+   res.cookie("token", token, {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: false,
   sameSite: "lax",
-  maxAge: 60 * 60 * 1000,
 });
 
     res.status(200).json({
@@ -170,4 +169,17 @@ export const googleLogin = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+
+export const logout = async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  res.status(200).json({
+    message: "Logout successful",
+  });
 };
