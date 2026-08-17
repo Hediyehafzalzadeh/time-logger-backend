@@ -2,7 +2,6 @@ import Category from "../models/Category.js";
 
 export const createCategory = async (req, res) => {
 
-  console.log("🔥 CREATE CATEGORY START");
   console.log("BODY:", req.body);
   console.log("USER:", req.user);
   
@@ -12,7 +11,6 @@ export const createCategory = async (req, res) => {
       color: req.body.color,
       userId: req.user.userId,
     });
-    console.log("🔥 CATEGORY CREATED → 201");
 
 
     return res.status(201).json(category);

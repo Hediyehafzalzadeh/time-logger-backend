@@ -8,7 +8,6 @@ export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -17,7 +16,6 @@ export const register = async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
@@ -57,7 +55,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Compare password with hashed password
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.password
@@ -69,7 +66,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Create JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -128,10 +124,8 @@ export const googleLogin = async (req, res) => {
       name,
     } = payload;
 
-    // Find existing user
     let user = await User.findOne({ email });
 
-    // Create user if doesn't exist
     if (!user) {
       user = await User.create({
         name,
@@ -140,7 +134,6 @@ export const googleLogin = async (req, res) => {
       });
     }
 
-    // Create your own JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
