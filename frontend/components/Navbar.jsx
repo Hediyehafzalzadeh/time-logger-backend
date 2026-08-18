@@ -5,7 +5,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { TaskHistoryButton } from "@/components/TaskHistoryButton";
 import ShowProgressButton from "@/components/ShowProgressButton";
 import LoginButton from "@/components/LoginButton";
-import SignUpButton from './SignUpButton';
 
 export const Navbar = () => {
     const { user , isLoading } = useAuth();
@@ -22,7 +21,6 @@ export const Navbar = () => {
 
   {!isLoading && (
     <>
-      <SignUpButton/>
       <LoginButton user={user} />
     </>
   )}

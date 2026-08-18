@@ -118,6 +118,38 @@ export function AuthProvider({ children }) {
     getCurrentUser();
   }, []);
 
+  const signUp = async (name, email, password) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Sign up failed");
+      }
+
+      console.log("Registered successfully:", data);
+      return data;
+    } catch (error) {
+      console.error("SignUp failed:", error);
+      throw error;
+    }
+  };
+
   const Logout = async () => {
     try {
       const response = await fetch(
@@ -145,6 +177,7 @@ export function AuthProvider({ children }) {
         user,
         setUser,
         isLoading,
+        signUp,
         Logout,
         getCurrentUser,
       }}

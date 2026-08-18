@@ -1,24 +1,22 @@
 "use client";
 
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import React,{
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
+import { Field, FieldLabel } from "@/components/ui/field";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CircleCheck, Edit, Pause, Play, Timer, Trash } from "lucide-react";
+import { CircleCheck, Pause, Play, Timer } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { addTask, deleteTask, getTasks, getCategories, updateTask } from "@/app/actions";
+import {
+  addTask,
+  deleteTask,
+  getTasks,
+  getCategories,
+  updateTask,
+} from "@/app/actions";
 import ManualDialog from "./ManualDialog";
 import ConfirmationDialog from "./ConfirmationDialog";
-import { set } from "date-fns";
 import EditTaskDialog from "./EditTaskDialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import AddCategories from "./AddCategories";
 
 const Logger = () => {
@@ -31,11 +29,10 @@ const Logger = () => {
   const [loading, setLoading] = useState(false);
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [totalTime, setTotalTime] = useState(0);
   const [existingTask, setExistingTask] = useState(null);
   const [categories, setCategories] = useState([]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!isRunning) return;
 
     const entries = localStorage.getItem("timeEntries");
@@ -68,10 +65,10 @@ useEffect(() => {
     }
   }, [isRunning]);
 
-useEffect(() => {
-  if (!user) {
-    resetTimer();
-  }
+  useEffect(() => {
+    if (!user) {
+      resetTimer();
+    }
     const fetchData = async () => {
       if (user) {
         const tasksData = await getTasks();
@@ -82,10 +79,9 @@ useEffect(() => {
         setTasks([]);
         setCategories([]);
       }
-    }
+    };
     fetchData();
-  }, [user] );
-
+  }, [user]);
 
   useEffect(() => {
     const startTime = localStorage.getItem("startedAt");
@@ -134,6 +130,20 @@ useEffect(() => {
     localStorage.removeItem("startedAt");
     localStorage.setItem("timeEntries", JSON.stringify(newTimeEntries));
     localStorage.setItem("counter", counter);
+    localStorage.setItem(
+      "startTimes",
+      JSON.stringify([
+        ...JSON.parse(localStorage.getItem("startTimes") || "[]"),
+        startedAt,
+      ]),
+    );
+    localStorage.setItem(
+      "endTimes",
+      JSON.stringify([
+        ...JSON.parse(localStorage.getItem("endTimes") || "[]"),
+        stopTime,
+      ]),
+    );
 
     return duration;
   };
@@ -146,7 +156,11 @@ useEffect(() => {
       return null;
     }
 
-    if (totalTime + counter > 24 * 3600) {
+    const totalLoggedTime = tasks.reduce(
+      (acc, task) => acc + Number(task.duration || 0),
+      0,
+    );
+    if (totalLoggedTime + counter > 24 * 3600) {
       toast("Total time for the day cannot exceed 24 hours");
       return null;
     }
@@ -164,7 +178,7 @@ useEffect(() => {
     // }
 
     console.log("TOTAL DURATION:", sum);
-    saveTask(sum);
+    await saveTask(sum);
     localStorage.removeItem("startedAt");
     localStorage.setItem("timeEntries", JSON.stringify([]));
     localStorage.setItem("saved", true);
@@ -172,44 +186,55 @@ useEffect(() => {
     setCounter(0);
   };
 
-  const calculateTotalTime = () => {
-    const total = tasks
-      .map((task) => task.duration)
-      .reduce((acc, duration) => acc + duration, 0);
-    setTotalTime(total);
-    return total;
-  };
+  const calculateTotalTime = () =>
+    tasks.reduce((acc, task) => acc + Number(task.duration || 0), 0);
 
   const saveTask = async (duration) => {
     if (!currentTaskName) {
       toast("set a name for your task ");
       return null;
     }
-    
+
     let newTask = {
       name: currentTaskName,
       duration: duration,
-      categoryId: currentTaskTag,
-      timeEntries: JSON.parse(localStorage.getItem("timeEntries")),
-      
-      
+      category: currentTaskTag,
+      timeEntries: JSON.parse(localStorage.getItem("timeEntries") || "[]"),
+      startTimes: JSON.parse(localStorage.getItem("startTimes") || "[]"),
+      endTimes: JSON.parse(localStorage.getItem("endTimes") || "[]"),
     };
     setCurrentTaskName("");
     setCurrentTaskTag("");
     setLoading(true);
-    if(existingTask !== null){
-   
-      const res  = editTaskHandler(existingTask , newTask);
+    if (existingTask !== null) {
+      await editTaskHandler(existingTask, newTask);
       setExistingTask(null);
-
-    }else{
+    } else {
+      console.log("newTask in saveTask :", newTask);
       const res = await addTask(newTask);
-    setTasks([
-      ...tasks,
-      { name: res.name, duration: res.duration, categoryId: res.categoryId },
-    ]);
-    toast("Task saved successfully");
+      if (!res || res.error) {
+        toast(res?.error || "Failed to save task");
+        setLoading(false);
+        return;
+      }
 
+      const duration = Number(res.duration ?? newTask.duration);
+      if (!Number.isFinite(duration)) {
+        toast("Failed to save task: invalid duration");
+        setLoading(false);
+        return;
+      }
+
+      setTasks((prev) => [
+        ...prev,
+        {
+          ...res,
+          name: res.name ?? newTask.name,
+          duration,
+          categoryId: res.categoryId ?? res.category ?? newTask.categoryId,
+        },
+      ]);
+      toast("Task saved successfully");
     }
     setLoading(false);
   };
@@ -247,7 +272,7 @@ useEffect(() => {
 
   const resetTimer = () => {
     setIsRunning(false);
-    localStorage.removeItem("startedAt");
+    localStorage.removeItem("startTimes");
     localStorage.setItem("timeEntries", JSON.stringify([]));
     localStorage.setItem("saved", true);
     localStorage.removeItem("counter");
@@ -270,17 +295,16 @@ useEffect(() => {
     return category ? category.color : "hsl(0, 0%, 80%)";
   };
 
-  const resumeTask = (task) =>{
+  const resumeTask = (task) => {
     resetTimer();
     setCurrentTaskName(task.name);
-    setCurrentTaskTag(task.categoryId);
+    setCurrentTaskTag(task.category);
     setCounter(task.duration);
     setExistingTask(task);
     localStorage.setItem("saved", false);
     localStorage.setItem("timeEntries", JSON.stringify([task.duration]));
     localStorage.setItem("counter", task.duration);
-    
-  } 
+  };
 
   return (
     <div className="mx-auto flex max-w-7xl mx-auto items-stretch my-10 text-2xl gap-5 h-auto flex-col md:flex-row">
@@ -425,9 +449,14 @@ useEffect(() => {
 export default Logger;
 
 export function convertToRealFormat(time) {
-  let hours = Math.floor(time / 3600);
-  let minutes = Math.floor((time % 3600) / 60);
-  let seconds = Math.floor(time % 60);
+  const safeTime = Number(time);
+  if (!Number.isFinite(safeTime) || safeTime < 0) {
+    return "00:00:00";
+  }
+
+  let hours = Math.floor(safeTime / 3600);
+  let minutes = Math.floor((safeTime % 3600) / 60);
+  let seconds = Math.floor(safeTime % 60);
 
   return `${hours.toString().padStart(2, "0")}:${minutes
     .toString()

@@ -110,6 +110,7 @@ export async function getHistoryByDate(date) {
 }
 
 export async function addTask(task) {
+  console.log("task in addTask :___________", task);
   if (!task) throw new Error("no task provided");
 
   try {
@@ -117,16 +118,20 @@ export async function addTask(task) {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
       method: "POST",
       credentials: "include",
-     headers: {
-          "Content-Type": "application/json",
-          Cookie: `token=${token}`,
-        },
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `token=${token}`,
+      },
       body: JSON.stringify(task),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to add task");
+      throw new Error(data?.message || "Failed to add task");
     }
+
+    return data;
   } catch (error) {
     console.error("error in saveTask :", error);
     return { error: error.message || "Failed to save task" };
@@ -259,16 +264,16 @@ export async function deleteCategory(id) {
         },
       },
     );
-     const data = await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
       throw new Error("Failed to delete category");
-    }return data;
+    }
+    return data;
   } catch (error) {
     console.error("error in deleteCategory :", error);
     return { error: error.message || "Failed to delete category" };
   }
-    
 }
 
 const getTokenFromCookies = async () => {

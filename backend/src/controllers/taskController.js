@@ -1,8 +1,33 @@
 import Task from "../models/Task.js";
+import Category from "../models/Category.js";
+import mongoose from "mongoose";
 
 export const createTask = async (req, res) => {
   try {
-    const task = await Task.create({ ...req.body, userId: req.user.id });
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user token" });
+    }
+
+    const categoryInput = req.body.category ;
+
+    const categoryQuery = mongoose.Types.ObjectId.isValid(categoryInput)
+      ? { _id: categoryInput, userId }
+      : { name: categoryInput, userId };
+
+    const category = await Category.findOne({
+      ...categoryQuery,
+    });
+
+    if (!category) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
+
+    const task = await Task.create({
+      ...req.body,
+      userId,
+      category: category._id,
+    });
 
     res.status(201).json(task);
   } catch (error) {
@@ -12,22 +37,26 @@ export const createTask = async (req, res) => {
 
 export const getTasks = async (req, res) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user token" });
+    }
 
     const { start, end } = req.query;
 
-    const filter = {      
-      userId: req.user.id
-};
+    const filter = {
+      userId,
+    };
 
     if (start || end) {
-      filter.date = {};
+      filter.createdAt = {};
 
       if (start) {
-        filter.date.$gte = new Date(start);
+        filter.createdAt.$gte = new Date(start);
       }
 
       if (end) {
-        filter.date.$lte = new Date(end);
+        filter.createdAt.$lte = new Date(end);
       }
     }
 
@@ -41,7 +70,15 @@ export const getTasks = async (req, res) => {
 
 export const getTask = async (req, res) => {
   try {
-    const task = await Task.findOne({ _id: req.params.id, userId: req.user.id });
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user token" });
+    }
+
+    const task = await Task.findOne({
+      _id: req.params.id,
+      userId,
+    });
 
     if (!task) {
       return res.status(404).json({
@@ -57,10 +94,45 @@ export const getTask = async (req, res) => {
 
 export const updateTask = async (req, res) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user token" });
+    }
+
+    // Prepare update payload
+    const updateData = { ...req.body };
+
+    // If frontend sent a category name (or categoryId), resolve it to the Category _id
+    const categoryInput = req.body.category ?? req.body.categoryId;
+    if (categoryInput) {
+      const categoryQuery = mongoose.Types.ObjectId.isValid(categoryInput)
+        ? { _id: categoryInput, userId }
+        : { name: categoryInput, userId };
+
+      const category = await Category.findOne({ ...categoryQuery });
+
+      if (!category) {
+        return res.status(400).json({ message: "Invalid category" });
+      }
+
+      updateData.category = category._id;
+      // remove any name/id fields to avoid storing the raw input
+      delete updateData.categoryId;
+      delete updateData.categoryName;
+      // also delete if frontend mistakenly sent category as name string field
+      if (
+        typeof req.body.category === "string" &&
+        !mongoose.Types.ObjectId.isValid(req.body.category)
+      ) {
+        // already set updateData.category to ObjectId, remove the name
+        // (delete above covers updateData.categoryName if used)
+      }
+    }
+
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
-      req.body,
-      { new: true }
+      { _id: req.params.id, userId },
+      updateData,
+      { new: true },
     );
 
     if (!task) {
@@ -77,7 +149,15 @@ export const updateTask = async (req, res) => {
 
 export const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user token" });
+    }
+
+    const task = await Task.findOneAndDelete({
+      _id: req.params.id,
+      userId,
+    });
 
     if (!task) {
       return res.status(404).json({
